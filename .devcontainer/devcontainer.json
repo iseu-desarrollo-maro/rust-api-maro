@@ -1,19 +1,18 @@
 {
-    "name": "Rust Dev",
-    "image": "rust:latest",
-    "workspaceFolder": "/workspaces/mi_proyecto",
+    "name": "Rust DevContainer",
+    "image": "mcr.microsoft.com/vscode/devcontainers/rust:latest",
+    "runArgs": [
+        "--env-file",
+        ".env"
+    ],
     "customizations": {
         "vscode": {
-            "extensions": [
-                "rust-lang.rust-analyzer"
-            ],
             "settings": {
                 "terminal.integrated.shell.linux": "/bin/bash"
-            }
+            },
+            "extensions": [
+                "rust-lang.rust-analyzer"
+            ]
         }
-    },
-    "remoteEnv": {
-        "GITHUB_TOKEN": ""
-    },
-    "postCreateCommand": "cd app && cargo build"
+    }
 }
