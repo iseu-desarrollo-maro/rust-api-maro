@@ -1,0 +1,24 @@
+# Ignorar la carpeta de compilación de Cargo
+/target
+
+# Ignorar archivos de configuración sensibles
+.env
+
+# Ignorar metadatos de Git
+.git
+
+# Ignorar archivos temporales de VS Code y del sistema
+.vscode
+*.swp
+*.log
+
+# Ignorar binarios y símbolos generados en Windows
+*.exe
+*.pdb
+
+# Ignorar archivos de Docker
+*.pid
+*.sock
+
+# Ignorar archivos de backup
+*~
