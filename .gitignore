@@ -1,5 +1,5 @@
 # Ignorar la carpeta de compilación de Cargo
-/target
+target/
 
 # Ignorar archivos de configuración sensibles
 .env
