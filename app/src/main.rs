@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-//use reqwest::{Client, Response, header::{self, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT}};
-use reqwest::{Client, header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT}};
+use reqwest::{Client, Response, header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT}};
 use std::env;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,40 +39,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let client: Client = reqwest::Client::new();
 
-    let mut headers: HeaderMap = HeaderMap::new();
+let mut headers: HeaderMap = HeaderMap::new();
 headers.insert(USER_AGENT, HeaderValue::from_static("rust-api-maro"));
 headers.insert(
     AUTHORIZATION,
     HeaderValue::from_str(&format!("Bearer {}", token))?,
 );
 
-let query = GraphQLquery {
-    query: "{ viewer { login name bio url } }".to_string(),
-};
+    let query: GraphQLquery = GraphQLquery {
+        query: "{ viewer { login name bio url } }".to_string(),
+    };
 
-let response = client
-    .post("https://api.github.com/graphql")
-    .headers(headers)
-    .json(&query)
-    .send()
-    .await?;
+    let response: Response = client
+        .post("https://api.github.com/graphql")
+        .headers(headers)
+        .json(&query)
+        .send()
+        .await?;
 
-let github_data: GitHubResponse = response.json().await?;
+    let github_data: GitHubResponse = response.json().await?;
 
-if let Some(errors) = github_data.errors {
-    eprintln!("Errores de la API de GraphQL:");
-    for error in errors {
-        eprintln!("- {}", error.message);
-    }
-} else if let Some(data) = github_data.data {
-    let viewer = data.viewer;
-    println!("---Datos del Usuario GitHub---");
-    println!("Login: {}", viewer.login);
-    println!("Nombre: {}", viewer.name.unwrap_or("N/A".to_string()));
-    println!("Bio: {}", viewer.bio.unwrap_or("Sin biografia".to_string()));
-    println!("URL: {}", viewer.url);
-}
-
+    if let Some(errors) = github_data.errors {
+        eprintln!("Errores de la API de GraphQL:");
+        for error in errors {
+            eprintln!("- {}", error.message);
+        }
+    } else if let Some(data) = github_data.data {
+        let viewer: Viewer = data.viewer;
+        print!("---Datos del Usuario GitHub---\n");
+        println!("Login: {}", viewer.login);
+        println!("Nombre: {}", viewer.name.unwrap_or("N/A".to_string()));
+        println!("Bio: {}", viewer.bio.unwrap_or("Sin biografia".to_string()));
+        println!("URL: {}", viewer.url);
+    } 
 
     Ok(())
 }
