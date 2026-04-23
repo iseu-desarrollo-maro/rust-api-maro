@@ -55,7 +55,7 @@ async fn miembros(query: web::Query<TokenQuery>, client: web::Data<Client>) -> A
                     .map(|members| HttpResponse::Ok().json(members))
                     .map_err(|e| {
                         eprintln!("Error de parseo de miembros: {}", e);
-                        serde_json::json!({ "error": "Error al parsear JSON de miembros" }),
+                        serde_json::json!({ "error": "Error al parsear JSON de miembros" })
                     }).or_else(|err| Ok(HttpResponse::InternalServerError().json(err)))
             } else {
                 Ok(HttpResponse::Unauthorized().json(
@@ -119,6 +119,10 @@ async fn info(req: actix_web::HttpRequest) -> ActixResult<HttpResponse> {
     Ok(HttpResponse::Ok().json(response))
 }
 
+async fn health_check() -> ActixResult<HttpResponse> {
+    Ok(HttpResponse::Ok().body("OK"))
+}
+
 async fn welcome() -> ActixResult<HttpResponse> {
     // Obtenemos la URL del frontend de una variable de entorno, 
     // En Azure, esta variable debe ser la URL de tu App Service (https://...)
@@ -146,6 +150,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(client.clone()))
             .route("/", web::get().to(welcome))
+            .route("/health", web::get().to(health_check))
             .route("/miembros", web::get().to(miembros))
             .route("/datosUsuario", web::get().to(datos_usuario))
             .route("/info", web::get().to(info))

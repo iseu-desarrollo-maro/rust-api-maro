@@ -101,4 +101,5 @@ def api_miembros():
     return data, status_code, {'Content-Type': 'application/json'}
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5001)
+    port = int(os.getenv("PORT", 80))
+    app.run(host="0.0.0.0", port=port)

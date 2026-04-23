@@ -6,8 +6,9 @@ services:
     expose:
       - "7001"
     environment:
-      - FRONTEND_URL=https://mi-proyecto-rust-flask.azurewebsites.net
+      - FRONTEND_URL=https://mi-proyecto-rust-flask-frontend.azurewebsites.net
       - GITHUB_ORG=iseu-desarrollo-maro
+      - PORT=7001
     restart: unless-stopped
 
   frontend:
@@ -16,7 +17,7 @@ services:
     ports:
       - "5001:5001"
     environment:
-      - API_URL=http://backend:7001
+      - API_URL=https://mi-proyecto-rust-flask.azurewebsites.net
       - GITHUB_ORG=iseu-desarrollo-maro
     depends_on:
       - backend
