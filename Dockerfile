@@ -5,6 +5,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY frontend_flask.py .
 COPY templates/ ./templates/
 COPY app/static/ ./app/static/
-EXPOSE T=${PORT:-80} # Valor por defecto para Docker Compose y Azure
+EXPOSE 80
 CMD ["python", "frontend_flask.py"]
-

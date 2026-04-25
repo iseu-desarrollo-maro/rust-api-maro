@@ -7,7 +7,7 @@ import json # Import json for potential error parsing
 app = Flask(__name__, static_folder='app/static')
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_key_para_local")
 
-BASE_URL = os.getenv("API_URL", "http://127.0.0.1:7001")
+BASE_URL = os.getenv("API_URL", "http://127.0.0.1:7001").rstrip('/')
 ORG_NAME = os.getenv("GITHUB_ORG", "iseu-desarrollo-maro").strip()
 
 def call_backend_api(endpoint, method="GET", params=None, data=None, headers=None):
