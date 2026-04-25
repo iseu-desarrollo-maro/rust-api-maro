@@ -5,6 +5,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY frontend_flask.py .
 COPY templates/ ./templates/
 COPY app/static/ ./app/static/
-EXPOSE 5001
-ENV API_URL=http://backend:7001
+EXPOSE T=${PORT:-80} # Valor por defecto para Docker Compose y Azure
 CMD ["python", "frontend_flask.py"]
+

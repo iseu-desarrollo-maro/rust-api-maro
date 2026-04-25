@@ -3,21 +3,28 @@ services:
     container_name: dashboard-backend
     image: ghcr.io/iseu-desarrollo-maro/dashboard-backend:latest
     # En Azure no exponemos el puerto del backend al público
+    build:
+      context: ./app
+      dockerfile: Dockerfile
     expose:
       - "7001"
     environment:
-      - FRONTEND_URL=https://mi-proyecto-rust-flask-frontend.azurewebsites.net
-      - GITHUB_ORG=iseu-desarrollo-maro
-      - PORT=7001
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5001}
+      - GITHUB_ORG=${GITHUB_ORG:-iseu-desarrollo-maro}
+      - PORT=${PORT:-7001}
     restart: unless-stopped
 
   frontend:
     container_name: dashboard-frontend
     image: ghcr.io/iseu-desarrollo-maro/dashboard-frontend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5001:5001"
     environment:
-      - API_URL=https://mi-proyecto-rust-flask.azurewebsites.net
-      - GITHUB_ORG=iseu-desarrollo-maro
+      - API_URL=${API_URL:-http://backend:7001}
+      - GITHUB_ORG=${GITHUB_ORG:-iseu-desarrollo-maro}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-una-clave-muy-segura} # Añadido para desarrollo local
     depends_on:
       - backend

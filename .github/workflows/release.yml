@@ -6,8 +6,8 @@ on:
       - "v*"
 
 jobs:
-  build-rust:
-    name: Build Rust Binary
+  build-and-push-images:
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -15,9 +15,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -40,68 +37,30 @@ jobs:
           docker push ghcr.io/${{ github.repository_owner }}/dashboard-frontend:latest
           docker push ghcr.io/${{ github.repository_owner }}/dashboard-frontend:${{ github.ref_name }}
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build Optimized Release
-        run: |
-          cd app
-          cargo clean
-          cargo build --release
-          # Copiar el binario a la raíz del espacio de trabajo para un ZIP más limpio
-          cp target/release/mi-proyecto-enpoint ../dashboard-backend-linux
-          cd ..
-
-          # Crear un archivo de instrucciones rápido
-          echo "# Instrucciones de Ejecución" > README_RELEASE.md
-          echo "1. Ejecuta el backend: ./dashboard-backend-linux" >> README_RELEASE.md
-          echo "2. Instala dependencias de Python: pip install -r requirements.txt" >> README_RELEASE.md
-          echo "3. Ejecuta el frontend: python frontend_flask.py" >> README_RELEASE.md
-          echo "4. Accede a: http://localhost:5001" >> README_RELEASE.md
-
-          # Creamos un paquete completo con Python y el Binario
-          # Eliminamos la ruta app/target/... del zip para que el binario esté en la raíz
-          zip -r mi-proyecto-completo.zip frontend_flask.py requirements.txt templates/ app/static/ dashboard-backend-linux README_RELEASE.md
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mi-proyecto-enpoint-binary
-          path: mi-proyecto-completo.zip
-
-  create-release:
-    needs: build-rust
+  deploy-to-azure:
+    name: Deploy to Azure App Service
+    needs: build-and-push-images # Depende del job que construye y sube las imágenes
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          name: mi-proyecto-enpoint-binary
+          creds: ${{ secrets.AZURE_CREDENTIALS }} # Usamos el Service Principal
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: mi-proyecto-completo.zip
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy-to-azure:
-    name: Deploy to Azure App Service
-    needs: build-rust
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Azure Web App
+      - name: Deploy Backend (Rust)
         uses: azure/webapps-deploy@v3
         with:
           app-name: "mi-proyecto-rust-flask"
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          configuration-file: docker-compose.yml
+          # Ya no necesitamos publish-profile, Azure Login se encarga
+          images: ghcr.io/${{ github.repository_owner }}/dashboard-backend:${{ github.ref_name }}
+
+      - name: Deploy Frontend (Python)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: "mi-proyecto-rust-flask-frontend"
+          # Ya no necesitamos publish-profile, Azure Login se encarga
+          images: ghcr.io/${{ github.repository_owner }}/dashboard-frontend:${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

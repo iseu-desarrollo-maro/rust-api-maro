@@ -8,7 +8,7 @@ app = Flask(__name__, static_folder='app/static')
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_key_para_local")
 
 BASE_URL = os.getenv("API_URL", "http://127.0.0.1:7001")
-ORG_NAME = os.getenv("GITHUB_ORG", "iseu-desarrollo-maro")
+ORG_NAME = os.getenv("GITHUB_ORG", "iseu-desarrollo-maro").strip()
 
 def call_backend_api(endpoint, method="GET", params=None, data=None, headers=None):
     """
@@ -71,8 +71,9 @@ def datos_usuario():
     if not token:
         return render_template("datos_usuario.html", data={}, error="Debes ingresar un token")
     
-    # El backend espera el token en los parámetros de la consulta
-    data, error, _ = call_backend_api("datosUsuario", params={"token": token})
+    # El backend espera el token en la cabecera Authorization
+    headers = {"Authorization": f"Bearer {token}"}
+    data, error, _ = call_backend_api("datosUsuario", headers=headers)
     return render_template("datos_usuario.html", data=data if data else {}, error=error)
 
 @app.route("/usuarios", methods=["GET", "POST"])
@@ -92,9 +93,10 @@ def api_miembros():
     if not token:
         return {"error": "No hay token en la sesión"}, 401
     
-    # El backend espera el token y la organización en los parámetros de la consulta
-    params = {"token": token, "org": org}
-    data, error, status_code = call_backend_api("miembros", params=params)
+    # El backend espera el token en la cabecera Authorization y la organización en los parámetros de la consulta
+    headers = {"Authorization": f"Bearer {token}"}
+    params = {"org": org}
+    data, error, status_code = call_backend_api("miembros", params=params, headers=headers)
     
     if error:
         return {"error": error}, status_code

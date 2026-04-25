@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpServer, Result as ActixResult, HttpResponse};
+use actix_web::{web, App, HttpServer, Result as ActixResult, HttpResponse, HttpRequest};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use chrono::Utc;
@@ -32,12 +32,24 @@ struct InfoResponse {
 
 #[derive(Deserialize)]
 struct TokenQuery {
-    token: String,
     org: Option<String>,
 }
 
-async fn miembros(query: web::Query<TokenQuery>, client: web::Data<Client>) -> ActixResult<HttpResponse> {
-    let TokenQuery { token, org } = query.into_inner();
+fn extract_token(req: &HttpRequest) -> Option<String> {
+    req.headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .map(|s| s.to_string())
+}
+
+async fn miembros(req: HttpRequest, query: web::Query<TokenQuery>, client: web::Data<Client>) -> ActixResult<HttpResponse> {
+    let token = match extract_token(&req) {
+        Some(t) => t,
+        None => return Ok(HttpResponse::Unauthorized().json(serde_json::json!({"error": "Falta el token de autorización en la cabecera Bearer"}))),
+    };
+
+    let TokenQuery { org } = query.into_inner();
     let org_name = org.unwrap_or_else(|| std::env::var("GITHUB_ORG").unwrap_or_else(|_| "iseu-desarrollo-maro".to_string()));
     let members_url = format!("https://api.github.com/orgs/{}/members?filter=all", org_name);
 
@@ -69,8 +81,12 @@ async fn miembros(query: web::Query<TokenQuery>, client: web::Data<Client>) -> A
     }
 }
 
-async fn datos_usuario(query: web::Query<TokenQuery>, client: web::Data<Client>) -> ActixResult<HttpResponse> {
-    let TokenQuery { token, .. } = query.into_inner();
+async fn datos_usuario(req: HttpRequest, client: web::Data<Client>) -> ActixResult<HttpResponse> {
+    let token = match extract_token(&req) {
+        Some(t) => t,
+        None => return Ok(HttpResponse::Unauthorized().json(serde_json::json!({"error": "Falta el token de autorización en la cabecera Bearer"}))),
+    };
+
     let user_url = "https://api.github.com/user";
 
     let user_resp = client
