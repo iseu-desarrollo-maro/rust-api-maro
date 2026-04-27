@@ -65,16 +65,16 @@ jobs:
       - name: Build and Push Docker Images
         run: |
           # Backend (Rust)
-          docker build --progress=plain -t ghcr.io/$REPO_OWNER_LC/dashboard-backend:latest \
-                       -t ghcr.io/$REPO_OWNER_LC/dashboard-backend:${{ github.ref_name }} -f app/Dockerfile ./app
-          docker push ghcr.io/$REPO_OWNER_LC/dashboard-backend:latest
-          docker push ghcr.io/$REPO_OWNER_LC/dashboard-backend:${{ github.ref_name }}
+          docker build --progress=plain -t ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-backend:latest \
+                       -t ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-backend:${{ github.ref_name }} -f app/Dockerfile ./app
+          docker push ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-backend:latest
+          docker push ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-backend:${{ github.ref_name }}
 
           # Frontend (Flask/Python)
-          docker build --progress=plain -t ghcr.io/$REPO_OWNER_LC/dashboard-frontend:latest \
-                       -t ghcr.io/$REPO_OWNER_LC/dashboard-frontend:${{ github.ref_name }} -f Dockerfile .
-          docker push ghcr.io/$REPO_OWNER_LC/dashboard-frontend:latest
-          docker push ghcr.io/$REPO_OWNER_LC/dashboard-frontend:${{ github.ref_name }}
+          docker build --progress=plain -t ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-frontend:latest \
+                       -t ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-frontend:${{ github.ref_name }} -f Dockerfile .
+          docker push ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-frontend:latest
+          docker push ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-frontend:${{ github.ref_name }}
 
   create-github-release:
     name: Create GitHub Release
