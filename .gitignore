@@ -8,7 +8,7 @@ target/
 .git
 
 # Ignorar archivos temporales de VS Code y del sistema
-.vscode
+
 *.swp
 *.log
 
@@ -22,3 +22,7 @@ target/
 
 # Ignorar archivos de backup
 *~
+
+.python_packages
+__pycache__
+.venv

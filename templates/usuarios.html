@@ -15,16 +15,12 @@ content %}
         </tr>
       </thead>
       <tbody id="members-body">
-        <!-- Skeleton Rows (Se muestran por defecto) -->
+        <!-- Skeleton Rows -->
         {% for i in range(5) %}
         <tr class="skeleton-row">
-          <td>
-            <div class="skeleton skeleton-avatar"></div>
-          </td>
+          <td><div class="skeleton skeleton-avatar"></div></td>
           <td><div class="skeleton skeleton-text"></div></td>
-          <td class="text-end">
-            <div class="skeleton skeleton-btn"></div>
-          </td>
+          <td class="text-end"><div class="skeleton skeleton-btn"></div></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -34,37 +30,35 @@ content %}
 
 <script>
   document.addEventListener("DOMContentLoaded", async () => {
-    const params = new URLSearchParams(window.location.search);
-    const org = params.get("org") || "{{ org_name }}";
+    const org = "{{ org_name }}";
+    const token = "{{ session['token'] if session['token'] else '' }}";
     const tbody = document.getElementById("members-body");
     const errorContainer = document.getElementById("error-container");
 
     try {
-      // El token ahora se toma de la sesión en el servidor de Flask
-      const response = await fetch(`/api/miembros?org=${org}`);
-      const data = await response.json();
+      const response = await fetch(`/api/miembros?org=${org}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
+      const data = await response.json();
       if (data.error) throw new Error(data.error);
 
       tbody.innerHTML = data
         .map(
           (member) => `
         <tr class="card-row">
-          <td>
-            <img src="${member.avatar_url}" width="45" height="45" class="rounded-circle border-0 shadow-sm" />
-          </td>
+          <td><img src="${member.avatar_url}" width="45" height="45" class="rounded-circle border-0 shadow-sm" /></td>
           <td class="fw-bold">${member.login}</td>
           <td class="text-end">
-            <a href="${member.html_url}" target="_blank" class="btn btn-sm btn-light border">
-              Ver Perfil
-            </a>
+            <a href="${member.html_url}" target="_blank" class="btn btn-sm btn-light border">Ver Perfil</a>
           </td>
         </tr>
       `,
         )
         .join("");
     } catch (err) {
-      errorContainer.textContent = "Error: " + err.message;
+      // Mensaje de error cambiado para pruebas
+      errorContainer.textContent = "⚠️ Error personalizado: " + err.message;
       errorContainer.classList.remove("d-none");
       tbody.innerHTML = "";
     }

@@ -62,16 +62,19 @@ async fn miembros(req: HttpRequest, query: web::Query<TokenQuery>, client: web::
 
     match members_resp {
         Ok(r) => {
-            if r.status().is_success() {
-                r.json::<Vec<Member>>().await
-                    .map(|members| HttpResponse::Ok().json(members))
-                    .map_err(|e| {
-                        eprintln!("Error de parseo de miembros: {}", e);
-                        serde_json::json!({ "error": "Error al parsear JSON de miembros" })
-                    }).or_else(|err| Ok(HttpResponse::InternalServerError().json(err)))
+            let status = r.status();
+            if status.is_success() {
+                match r.json::<Vec<Member>>().await {
+                    Ok(members) => Ok(HttpResponse::Ok().json(members)),
+                    Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({"error": "Error al parsear JSON de miembros"}))),
+                }
             } else {
-                Ok(HttpResponse::Unauthorized().json(
-                    serde_json::json!({ "error": "Token inválido o miembros no encontrados" }),
+                let error_text = r.text().await.unwrap_or_else(|_| "Sin detalle".to_string());
+                // Convertimos el status de reqwest a u16 y luego al StatusCode de actix para evitar conflictos de versiones
+                let actix_status = actix_web::http::StatusCode::from_u16(status.as_u16())
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Ok(HttpResponse::build(actix_status).json(
+                    serde_json::json!({ "error": format!("GitHub Forbidden: {}. Detalle: {}", status, error_text) }),
                 ))
             }
         }
@@ -98,7 +101,9 @@ async fn datos_usuario(req: HttpRequest, client: web::Data<Client>) -> ActixResu
 
     match user_resp {
         Ok(r) => {
-            if r.status().is_success() {
+            // Extraemos el status antes de consumir 'r' con .json() o .text()
+            let status = r.status();
+            if status.is_success() {
                 match r.json::<User>().await {
                     Ok(user) => Ok(HttpResponse::Ok().json(user)),
                     Err(_) => Ok(HttpResponse::InternalServerError().json(
@@ -106,8 +111,11 @@ async fn datos_usuario(req: HttpRequest, client: web::Data<Client>) -> ActixResu
                     )),
                 }
             } else {
-                Ok(HttpResponse::Unauthorized().json(
-                    serde_json::json!({ "error": "Token inválido o usuario no encontrado" }),
+                let error_text = r.text().await.unwrap_or_else(|_| "Sin detalle".to_string());
+                let actix_status = actix_web::http::StatusCode::from_u16(status.as_u16())
+                    .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
+                Ok(HttpResponse::build(actix_status).json(
+                    serde_json::json!({ "error": format!("GitHub Forbidden: {}. Detalle: {}", status, error_text) }),
                 ))
             }
         }

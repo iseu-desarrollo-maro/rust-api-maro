@@ -6,8 +6,43 @@ on:
       - "v*"
 
 jobs:
+  build-rust-binary:
+    name: Build Rust Binary (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Release Binary
+        run: |
+          cd app
+          cargo build --release
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir release_pkg
+          cp app/target/release/mi-proyecto-enpoint release_pkg/
+          cp frontend_flask.py release_pkg/
+          cp requirements.txt release_pkg/
+          cp -r templates release_pkg/
+          cp -r app/static release_pkg/ 2>/dev/null || mkdir -p release_pkg/app/static
+          zip -r mi-proyecto-enpoint-${{ github.ref_name }}.zip release_pkg/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-package
+          path: mi-proyecto-enpoint-${{ github.ref_name }}.zip
+
   build-and-push-images:
     name: Build and Push Docker Images
+    needs: build-rust-binary
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -15,6 +50,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set lowercase repository owner
+        run: |
+          echo "REPO_OWNER_LC=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_ENV}
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -25,21 +64,39 @@ jobs:
 
       - name: Build and Push Docker Images
         run: |
-          # Backend
-          docker build -t ghcr.io/${{ github.repository_owner }}/dashboard-backend:latest \
-                       -t ghcr.io/${{ github.repository_owner }}/dashboard-backend:${{ github.ref_name }} ./app
-          docker push ghcr.io/${{ github.repository_owner }}/dashboard-backend:latest
-          docker push ghcr.io/${{ github.repository_owner }}/dashboard-backend:${{ github.ref_name }}
+          # Backend (Rust)
+          docker build --progress=plain -t ghcr.io/$REPO_OWNER_LC/dashboard-backend:latest \
+                       -t ghcr.io/$REPO_OWNER_LC/dashboard-backend:${{ github.ref_name }} -f app/Dockerfile ./app
+          docker push ghcr.io/$REPO_OWNER_LC/dashboard-backend:latest
+          docker push ghcr.io/$REPO_OWNER_LC/dashboard-backend:${{ github.ref_name }}
 
-          # Frontend
-          docker build -t ghcr.io/${{ github.repository_owner }}/dashboard-frontend:latest \
-                       -t ghcr.io/${{ github.repository_owner }}/dashboard-frontend:${{ github.ref_name }} .
-          docker push ghcr.io/${{ github.repository_owner }}/dashboard-frontend:latest
-          docker push ghcr.io/${{ github.repository_owner }}/dashboard-frontend:${{ github.ref_name }}
+          # Frontend (Flask/Python)
+          docker build --progress=plain -t ghcr.io/$REPO_OWNER_LC/dashboard-frontend:latest \
+                       -t ghcr.io/$REPO_OWNER_LC/dashboard-frontend:${{ github.ref_name }} -f Dockerfile .
+          docker push ghcr.io/$REPO_OWNER_LC/dashboard-frontend:latest
+          docker push ghcr.io/$REPO_OWNER_LC/dashboard-frontend:${{ github.ref_name }}
+
+  create-github-release:
+    name: Create GitHub Release
+    needs: [build-and-push-images, build-rust-binary]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: production-package
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mi-proyecto-enpoint-${{ github.ref_name }}.zip
+          body: "Release automática de la versión ${{ github.ref_name }}. Incluye imágenes Docker en GHCR y paquete binario."
 
   deploy-to-azure:
     name: Deploy to Azure App Service
-    needs: build-and-push-images # Depende del job que construye y sube las imágenes
+    needs: create-github-release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -47,20 +104,20 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }} # Usamos el Service Principal
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set lowercase repository owner
+        run: |
+          echo "REPO_OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> ${GITHUB_ENV}
 
       - name: Deploy Backend (Rust)
         uses: azure/webapps-deploy@v3
         with:
           app-name: "mi-proyecto-rust-flask"
-          # Ya no necesitamos publish-profile, Azure Login se encarga
-          images: ghcr.io/${{ github.repository_owner }}/dashboard-backend:${{ github.ref_name }}
+          images: ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-backend:${{ github.ref_name }}
 
       - name: Deploy Frontend (Python)
         uses: azure/webapps-deploy@v3
         with:
           app-name: "mi-proyecto-rust-flask-frontend"
-          # Ya no necesitamos publish-profile, Azure Login se encarga
-          images: ghcr.io/${{ github.repository_owner }}/dashboard-frontend:${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          images: ghcr.io/${{ env.REPO_OWNER_LC }}/dashboard-frontend:${{ github.ref_name }}
